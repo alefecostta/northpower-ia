@@ -1,0 +1,7 @@
+.env
+__pycache__/
+venv/
+historico.json
+base_conhecimento.json
+atualizacoes.log
+*.tmp

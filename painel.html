@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>North Power · Atendente IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090b; --side: #0d0d10; --surface: #131317; --surface-2: #1a1a20; --surface-3: #22222a;
+    --border: #232329; --border-2: #2e2e37;
+    --text: #ededf0; --text-2: #b4b4be; --muted: #7c7c88;
+    --accent: #7c6cff; --accent-2: #9a8dff; --accent-soft: rgba(124,108,255,.14); --accent-ring: rgba(124,108,255,.35);
+    --ok: #34d399; --ok-soft: rgba(52,211,153,.12);
+    --warn: #fbbf24; --warn-soft: rgba(251,191,36,.12);
+    --bad: #f87171; --bad-soft: rgba(248,113,113,.12);
+    --info: #60a5fa; --info-soft: rgba(96,165,250,.12);
+    --r: 12px; --side-w: 252px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  svg.i { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #26262e; border-radius: 10px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ---------- Sidebar ---------- */
+  .side { position: fixed; inset: 0 auto 0 0; width: var(--side-w); background: var(--side); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; z-index: 30; }
+  .side-top { padding: 14px 12px 8px; }
+  .ws { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .ws-logo { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 13px; }
+  .ws small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; line-height: 1.2; }
+  .ws b { font-size: 14px; line-height: 1.3; }
+  .nav { flex: 1; overflow-y: auto; padding: 6px 12px 12px; }
+  .nav-g { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 16px 10px 6px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: 9px; color: var(--text-2); text-decoration: none; font-weight: 500; margin-bottom: 1px; white-space: nowrap; }
+  .nav a:hover { background: var(--surface); color: var(--text); }
+  .nav a.on { background: var(--accent-soft); color: var(--accent-2); }
+  .nav a .cnt { margin-left: auto; font-size: 11px; font-weight: 600; background: var(--surface-3); color: var(--text-2); padding: 1px 7px; border-radius: 999px; }
+  .nav a .cnt.hot { background: var(--warn-soft); color: var(--warn); }
+  .side-foot { border-top: 1px solid var(--border); padding: 12px; }
+  .run { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; }
+  .run-row { display: flex; align-items: center; gap: 8px; }
+  .run-row b { font-size: 13px; }
+  .run small { color: var(--muted); font-size: 12px; display: block; margin-top: 2px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 3px rgba(52,211,153,.18); }
+  .dot.err { background: var(--bad); box-shadow: 0 0 0 3px rgba(248,113,113,.18); }
+  .dot.warn { background: var(--warn); }
+  .icon-btn { margin-left: auto; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface-2); display: grid; place-items: center; cursor: pointer; color: var(--text-2); flex: none; }
+  .icon-btn:hover { color: var(--text); background: var(--surface-3); }
+  .icon-btn svg.i { width: 14px; height: 14px; }
+
+  /* ---------- Main ---------- */
+  .main { margin-left: var(--side-w); min-height: 100vh; display: flex; flex-direction: column; }
+  .top { position: sticky; top: 0; z-index: 10; background: rgba(9,9,11,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; padding: 14px 28px; }
+  .top h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .top p { margin: 0; color: var(--muted); font-size: 13px; }
+  .top .grow { flex: 1; min-width: 0; }
+  .burger { display: none; }
+  .content { padding: 24px 28px 60px; width: 100%; max-width: 1280px; }
+  .page { display: none; } .page.on { display: block; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border-2); background: var(--surface-2); padding: 7px 13px; border-radius: 9px; cursor: pointer; font-weight: 500; white-space: nowrap; text-decoration: none; }
+  .btn:hover { background: var(--surface-3); }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.pri:hover { background: var(--accent-2); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+  .btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+  .btn.danger { color: var(--bad); }
+  .btn:disabled { opacity: .5; pointer-events: none; }
+  .btn svg.i { width: 15px; height: 15px; }
+
+  .banner { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-radius: var(--r); padding: 12px 16px; margin-bottom: 16px; border: 1px solid; }
+  .banner.warn { background: var(--warn-soft); border-color: rgba(251,191,36,.3); }
+  .banner.bad { background: var(--bad-soft); border-color: rgba(248,113,113,.3); }
+  .banner.info { background: var(--info-soft); border-color: rgba(96,165,250,.3); }
+  .banner .grow { flex: 1; min-width: 220px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); }
+  .card-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .card-h h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .card-h p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .card-b { padding: 18px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; }
+  .stat .l { color: var(--muted); font-size: 12.5px; font-weight: 500; display: flex; align-items: center; gap: 7px; }
+  .stat .l svg.i { width: 15px; height: 15px; }
+  .stat .n { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stat .s { color: var(--muted); font-size: 12px; }
+  .two { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 16px; }
+
+  .chart { position: relative; height: 210px; }
+  .chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .chart .gl { stroke: var(--border); stroke-width: 1; }
+  .chart .ax { fill: var(--muted); font-size: 11px; }
+  .chart .bar { fill: var(--accent); pointer-events: none; }
+  .chart .bar.hov { fill: var(--accent-2); }
+  .chart .hit { fill: transparent; }
+  .tip { position: absolute; pointer-events: none; background: var(--surface-3); border: 1px solid var(--border-2); border-radius: 8px; padding: 6px 10px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -100%); opacity: 0; transition: opacity .1s; color: var(--text-2); }
+  .tip b { font-size: 14px; color: var(--text); }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 11px 16px; font-size: 13px; margin: 0; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .b-respondido, .b-enviado_manual { background: var(--ok-soft); color: var(--ok); }
+  .b-simulado { background: var(--info-soft); color: var(--info); }
+  .b-ignorado { background: var(--surface-3); color: var(--muted); }
+  .b-limite { background: var(--bad-soft); color: var(--bad); }
+  .b-humano { background: var(--warn-soft); color: var(--warn); }
+  .b-cat { background: var(--accent-soft); color: var(--accent-2); }
+
+  .rows .row { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .rows .row:last-child { border-bottom: 0; }
+  .rows .row:hover { background: var(--surface-2); }
+  .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; font-size: 13px; flex: none; background: var(--surface-3); color: var(--text-2); }
+  .row .mid { flex: 1; min-width: 0; }
+  .row .who { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .sub { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .t { color: var(--muted); font-size: 12px; }
+  .row .rb { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+  .row .rb div { display: flex; gap: 4px; }
+
+  .inbox { display: grid; grid-template-columns: 370px 1fr; height: calc(100vh - 69px - 48px); min-height: 520px; overflow: hidden; }
+  .inbox .list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .list-tools { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .search { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 0 10px; color: var(--muted); }
+  .search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; padding: 8px 0; color: var(--text); }
+  .search:focus-within { border-color: var(--accent); }
+  .seg { display: flex; gap: 4px; overflow-x: auto; }
+  .seg button { border: 0; background: transparent; color: var(--muted); padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+  .seg button:hover { color: var(--text); }
+  .seg button.on { background: var(--surface-3); color: var(--text); }
+  .items { overflow-y: auto; flex: 1; }
+  .item { display: flex; gap: 11px; padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; border-left: 2px solid transparent; }
+  .item:hover { background: var(--surface-2); }
+  .item.sel { background: var(--accent-soft); border-left-color: var(--accent); }
+  .item .mid { flex: 1; min-width: 0; }
+  .item .l1 { display: flex; gap: 8px; align-items: baseline; }
+  .item .l1 b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .item .l1 span { color: var(--muted); font-size: 11.5px; flex: none; }
+  .item .l2 { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .l3 { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 2px 0 6px; }
+  .item .bs { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .detail { overflow-y: auto; min-width: 0; display: flex; flex-direction: column; }
+  .det-h { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: flex-start; }
+  .det-h .av { width: 42px; height: 42px; font-size: 15px; }
+  .det-h h2 { margin: 0 0 2px; font-size: 16px; font-weight: 600; }
+  .det-h .meta { color: var(--muted); font-size: 13px; word-break: break-word; }
+  .thread { padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .msg { max-width: 760px; }
+  .msg .who { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .msg .who b { color: var(--text-2); font-weight: 600; }
+  .bubble { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px 14px 14px 14px; padding: 13px 15px; white-space: pre-wrap; word-break: break-word; }
+  .msg.ai { align-self: flex-end; width: min(100%, 760px); }
+  .msg.ai .who { justify-content: flex-end; }
+  .msg.ai .bubble { background: var(--accent-soft); border-color: rgba(124,108,255,.28); border-radius: 14px 4px 14px 14px; }
+  .bubble a { color: var(--accent-2); font-weight: 600; }
+  textarea.bubble { width: 100%; min-height: 200px; resize: vertical; outline: none; display: block; font: inherit; line-height: 1.55; }
+  textarea.bubble:focus { border-color: var(--accent); }
+  .note { font-size: 12.5px; color: var(--muted); display: flex; gap: 10px; align-items: flex-start; background: var(--surface-2); border: 1px dashed var(--border-2); border-radius: 10px; padding: 11px 13px; }
+  .note svg.i { margin-top: 1px; }
+  .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--muted); padding: 60px 24px; flex: 1; }
+  .empty svg.i { width: 34px; height: 34px; stroke-width: 1.4; margin-bottom: 10px; color: var(--border-2); }
+  .empty b { color: var(--text-2); display: block; margin-bottom: 4px; font-size: 15px; }
+  .back { display: none; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { border: 1px solid var(--border-2); background: transparent; color: var(--text-2); border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; font-weight: 500; }
+  .chip:hover { color: var(--text); }
+  .chip.on { background: var(--accent-soft); color: var(--accent-2); border-color: rgba(124,108,255,.4); }
+  .kb { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .kc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-height: 180px; }
+  .kc.off { opacity: .55; }
+  .kc .kt { display: flex; align-items: center; gap: 6px; }
+  .kc h4 { margin: 0; font-size: 14.5px; font-weight: 600; }
+  .kc .kx { color: var(--text-2); font-size: 13px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
+  .kc .kf { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: auto; }
+  .kc .kf small { color: var(--muted); font-size: 12px; margin-right: auto; }
+  .add-card { border: 1px dashed var(--border-2); border-radius: var(--r); display: grid; place-items: center; min-height: 180px; color: var(--muted); cursor: pointer; background: transparent; }
+  .add-card:hover { color: var(--accent-2); border-color: var(--accent); background: var(--accent-soft); }
+  .add-card div { display: flex; flex-direction: column; align-items: center; gap: 8px; font-weight: 500; }
+
+  .switch { position: relative; width: 36px; height: 20px; flex: none; display: inline-block; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch span { position: absolute; inset: 0; background: var(--surface-3); border-radius: 999px; cursor: pointer; transition: .15s; border: 1px solid var(--border-2); }
+  .switch span::after { content: ""; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px; background: var(--text-2); border-radius: 50%; transition: .15s; }
+  .switch input:checked + span { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(16px); background: #fff; }
+
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+  .form .full { grid-column: 1 / -1; }
+  .f label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: var(--text-2); }
+  .f small { display: block; color: var(--muted); font-size: 12px; margin-top: 5px; }
+  .inp { width: 100%; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 9px; padding: 9px 11px; outline: none; color: var(--text); }
+  .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  textarea.inp { min-height: 150px; resize: vertical; line-height: 1.55; }
+  select.inp { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 30px; }
+  select.inp option { background: var(--surface-2); }
+  .stack { display: flex; flex-direction: column; gap: 16px; max-width: 860px; }
+  .foot-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mode { text-align: left; border: 1px solid var(--border-2); border-radius: 12px; padding: 16px; background: var(--surface-2); cursor: pointer; }
+  .mode:hover { border-color: var(--muted); }
+  .mode.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .mode b { display: flex; align-items: center; gap: 8px; font-size: 14.5px; margin-bottom: 4px; }
+  .mode span { color: var(--muted); font-size: 13px; }
+
+  .res { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .res:last-child { border-bottom: 0; }
+  .res .ic { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .res .ic.ok { background: var(--ok-soft); color: var(--ok); } .res .ic.no { background: var(--bad-soft); color: var(--bad); }
+  .res .ic svg.i { width: 14px; height: 14px; stroke-width: 2.4; }
+  .res small { color: var(--muted); display: block; word-break: break-word; }
+
+  .chat { display: flex; flex-direction: column; height: calc(100vh - 69px - 48px - 24px); min-height: 480px; }
+  .chat-log { flex: 1; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+  .chat-in { border-top: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-in .row2 { display: flex; gap: 10px; align-items: flex-end; }
+  .chat-in textarea { flex: 1; min-height: 46px; max-height: 180px; resize: vertical; }
+  .sugs { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .logs { background: #060608; border: 1px solid var(--border); border-radius: var(--r); padding: 16px; font: 12.5px/1.7 ui-monospace, "Cascadia Code", Consolas, monospace;
+    height: calc(100vh - 69px - 48px - 24px); min-height: 400px; overflow: auto; white-space: pre-wrap; color: #c7c7d1; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(3px); display: none; place-items: center; z-index: 50; padding: 16px; }
+  .modal-bg.on { display: grid; }
+  .modal { width: min(620px, 100%); background: var(--surface); border: 1px solid var(--border-2); border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.6); max-height: calc(100vh - 32px); overflow: auto; }
+  .modal .card-h { padding: 16px 20px; }
+  .modal .card-b { padding: 20px; }
+  .modal .foot { display: flex; gap: 10px; align-items: center; padding: 14px 20px; border-top: 1px solid var(--border); }
+
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 10px); background: var(--surface-3); border: 1px solid var(--border-2); color: var(--text);
+    padding: 10px 16px; border-radius: 10px; font-weight: 500; opacity: 0; transition: .2s; pointer-events: none; z-index: 60; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: s .7s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .scrim { display: none; }
+
+  @media (max-width: 1100px) { .two { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 900px) {
+    .side { transform: translateX(-100%); transition: transform .2s; }
+    body.menu .side { transform: none; }
+    body.menu .scrim { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 25; }
+    .main { margin-left: 0; }
+    .burger { display: grid; margin-left: 0; }
+    .top { padding: 12px 16px; }
+    .content { padding: 16px 16px 50px; }
+    .inbox { grid-template-columns: 1fr; height: calc(100vh - 61px - 32px); }
+    .inbox .detail { display: none; }
+    .inbox.show-det .list { display: none; }
+    .inbox.show-det .detail { display: flex; }
+    .back { display: grid; margin-left: 0; }
+    .form, .modes { grid-template-columns: 1fr; }
+    .chat, .logs { height: calc(100vh - 61px - 32px - 16px); }
+    .thread, .det-h { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (max-width: 520px) { .stats { gap: 10px; } .stat .n { font-size: 24px; } .top .btn span { display: none; } .row .rb div { display: none; } }
+</style>
+</head>
+<body>
+<div class="scrim" onclick="document.body.classList.remove('menu')"></div>
+
+<aside class="side">
+  <div class="side-top">
+    <div class="ws">
+      <div class="ws-logo">N</div>
+      <div><small>Atendente IA</small><b>North Power</b></div>
+    </div>
+  </div>
+  <nav class="nav" id="nav">
+    <div class="nav-g">Geral</div>
+    <a href="#/visao" data-r="visao"><svg class="i" data-i="grid"></svg>Visão geral</a>
+    <a href="#/entrada" data-r="entrada"><svg class="i" data-i="inbox"></svg>Caixa de entrada<span class="cnt" id="cEntrada">0</span></a>
+    <a href="#/humano" data-r="humano"><svg class="i" data-i="star"></svg>Precisam de você<span class="cnt" id="cHumano">0</span></a>
+    <div class="nav-g">Conhecimento</div>
+    <a href="#/base" data-r="base"><svg class="i" data-i="book"></svg>Informações da loja<span class="cnt" id="cBase">0</span></a>
+    <a href="#/testar" data-r="testar"><svg class="i" data-i="bot"></svg>Testar a IA</a>
+    <div class="nav-g">Configurações</div>
+    <a href="#/email" data-r="email"><svg class="i" data-i="mail"></svg>Caixa de e-mail</a>
+    <a href="#/ia" data-r="ia"><svg class="i" data-i="spark"></svg>Inteligência artificial</a>
+    <a href="#/comportamento" data-r="comportamento"><svg class="i" data-i="sliders"></svg>Comportamento</a>
+    <a href="#/logs" data-r="logs"><svg class="i" data-i="term"></svg>Logs</a>
+  </nav>
+  <div class="side-foot">
+    <div class="run">
+      <div class="run-row"><span class="dot" id="dot"></span><b id="runTitle">Carregando…</b>
+        <button class="icon-btn" id="btnPausa" title="Pausar / ligar"><svg class="i" data-i="pause"></svg></button></div>
+      <small id="runSub">—</small>
+    </div>
+    <div style="font-size:11px;color:var(--muted);padding:8px 4px 0" id="versao"></div>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="top">
+    <button class="icon-btn burger" onclick="document.body.classList.add('menu')"><svg class="i" data-i="menu"></svg></button>
+    <div class="grow"><h1 id="pgTitle">Visão geral</h1><p id="pgSub"></p></div>
+    <button class="btn" id="btnVerificar"><svg class="i" data-i="refresh"></svg><span>Verificar agora</span></button>
+  </div>
+
+  <div class="content">
+    <div id="banners"></div>
+
+    <section class="page" id="p-visao">
+      <div class="stats">
+        <div class="stat"><div class="l"><svg class="i" data-i="send"></svg>Respondidos hoje</div><div class="n" id="sResp">0</div><div class="s" id="sRespS">&nbsp;</div></div>
+        <div class="stat"><div class="l"><svg class="i" data-i="star"></svg>Precisam de você</div><div class="n" id="sHum">0</div><div class="s">hoje</div></div>
+        <div class="stat"><div class="l"><svg class="i" data-i="flask"></svg>Respostas de teste</div><div class="n" id="sSim">0</div><div class="s">não enviadas · hoje</div></div>
+        <div class="stat"><div class="l"><svg class="i" data-i="shield"></svg>Ignorados</div><div class="n" id="sIgn">0</div><div class="s">robôs e spam · hoje</div></div>
+      </div>
+      <div class="two">
+        <div class="card">
+          <div class="card-h"><div><h3>Respostas enviadas</h3><p>Últimos 7 dias</p></div></div>
+          <div class="card-b"><div class="chart" id="chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><div><h3>Status do robô</h3><p>Atualiza sozinho</p></div></div>
+          <div class="card-b"><dl class="kv" id="kv"></dl></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><div style="flex:1"><h3>Últimos emails</h3><p>Clique para ver a conversa</p></div><a class="btn ghost" href="#/entrada">Ver todos</a></div>
+        <div class="rows" id="ultimos"></div>
+      </div>
+    </section>
+
+    <section class="page" id="p-entrada">
+      <div class="card inbox" id="inbox">
+        <div class="list">
+          <div class="list-tools">
+            <div class="search"><svg class="i" data-i="search"></svg><input id="busca" placeholder="Buscar por nome, email ou assunto"></div>
+            <div class="seg" id="segInbox">
+              <button data-f="todos" class="on">Todos</button>
+              <button data-f="respondido">Respondidos</button>
+              <button data-f="humano">Precisam de você</button>
+              <button data-f="simulado">Teste</button>
+              <button data-f="ignorado">Ignorados</button>
+            </div>
+          </div>
+          <div class="items" id="items"></div>
+        </div>
+        <div class="detail" id="detail"></div>
+      </div>
+    </section>
+
+    <section class="page" id="p-base">
+      <div class="note" style="margin-bottom:16px"><svg class="i" data-i="spark"></svg>
+        <div>A IA usa <b style="color:var(--text)">somente</b> as informações ativas desta página para responder os clientes. O que não estiver aqui ela não inventa. Adicione prazos, política de troca, pagamentos, dúvidas frequentes e regras de como ela deve falar.</div></div>
+      <div class="chips" id="kbChips"></div>
+      <div class="kb" id="kb"></div>
+    </section>
+
+    <section class="page" id="p-testar">
+      <div class="card chat">
+        <div class="chat-log" id="chatLog"></div>
+        <div class="chat-in">
+          <div class="sugs" id="sugs"></div>
+          <input class="inp" id="tAssunto" placeholder="Assunto (opcional) · ex.: Re: Pedido aprovado #1234">
+          <div class="row2">
+            <textarea class="inp" id="tMsg" placeholder="Escreva como se fosse um cliente…  (Enter envia, Shift+Enter quebra linha)"></textarea>
+            <button class="btn pri" id="btnTestar"><svg class="i" data-i="send"></svg><span>Enviar</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page" id="p-email">
+      <div class="stack">
+        <div class="card">
+          <div class="card-h"><div><h3>Conta da Hostinger</h3><p>Use o mesmo email e senha do webmail.</p></div></div>
+          <div class="card-b form">
+            <div class="f"><label>Email</label><input class="inp" data-k="EMAIL_USUARIO"></div>
+            <div class="f"><label>Senha do email</label><input class="inp" type="password" data-k="EMAIL_SENHA" autocomplete="new-password"><small data-tem="EMAIL_SENHA"></small></div>
+            <div class="f"><label>Servidor de entrada (IMAP)</label><input class="inp" data-k="IMAP_HOST"></div>
+            <div class="f"><label>Porta IMAP</label><input class="inp" data-k="IMAP_PORTA"></div>
+            <div class="f"><label>Servidor de saída (SMTP)</label><input class="inp" data-k="SMTP_HOST"></div>
+            <div class="f"><label>Porta SMTP</label><input class="inp" data-k="SMTP_PORTA"></div>
+          </div>
+        </div>
+        <div class="foot-acts"><button class="btn pri" data-salvar>Salvar</button><button class="btn" data-checar><svg class="i" data-i="plug"></svg>Testar conexão</button></div>
+        <div class="card" data-resbox style="display:none"></div>
+      </div>
+    </section>
+
+    <section class="page" id="p-ia">
+      <div class="stack">
+        <div class="card">
+          <div class="card-h"><div><h3>Google AI Studio (Gemini)</h3><p>Crie a chave em aistudio.google.com/apikey</p></div></div>
+          <div class="card-b form">
+            <div class="f"><label>Chave da API</label><input class="inp" type="password" data-k="GEMINI_API_KEY" autocomplete="new-password"><small data-tem="GEMINI_API_KEY"></small></div>
+            <div class="f"><label>Modelo</label><input class="inp" data-k="GEMINI_MODELO"><small>Se aparecer erro 404, troque por um modelo listado no AI Studio.</small></div>
+          </div>
+        </div>
+        <div class="foot-acts"><button class="btn pri" data-salvar>Salvar</button><button class="btn" data-checar><svg class="i" data-i="plug"></svg>Testar conexão</button>
+          <a class="btn ghost" href="#/base"><svg class="i" data-i="book"></svg>Editar o que a IA sabe</a></div>
+        <div class="card" data-resbox style="display:none"></div>
+      </div>
+    </section>
+
+    <section class="page" id="p-comportamento">
+      <div class="stack">
+        <div class="card">
+          <div class="card-h"><div><h3>Modo de envio</h3><p>Comece no teste e ligue o automático quando gostar das respostas.</p></div></div>
+          <div class="card-b modes">
+            <button class="mode" id="mTeste"><b><svg class="i" data-i="flask"></svg>Modo teste</b><span>A IA lê os emails e escreve a resposta, mas não envia. Você revisa e envia pela Caixa de entrada.</span></button>
+            <button class="mode" id="mAuto"><b><svg class="i" data-i="zap"></svg>Automático</b><span>A IA responde os clientes sozinha. Casos delicados vão para “Precisam de você” e ficam com estrela no webmail.</span></button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><div><h3>Loja e limites</h3></div></div>
+          <div class="card-b form">
+            <div class="f"><label>Nome que aparece para o cliente</label><input class="inp" data-k="NOME_REMETENTE"></div>
+            <div class="f"><label>Instagram da loja (sem @)</label><input class="inp" data-k="INSTAGRAM_USUARIO"></div>
+            <div class="f"><label>Verificar a caixa a cada (segundos)</label><input class="inp" data-k="INTERVALO_SEGUNDOS"></div>
+            <div class="f"><label>Responder emails das últimas (horas)</label><input class="inp" data-k="HORAS_RETROATIVAS"><small>Evita responder emails antigos quando o robô é ligado.</small></div>
+            <div class="f"><label>Máximo de respostas por cliente/dia</label><input class="inp" data-k="MAX_POR_REMETENTE_DIA"></div>
+            <div class="f"><label>Máximo de respostas por dia (total)</label><input class="inp" data-k="MAX_RESPOSTAS_DIA"></div>
+          </div>
+        </div>
+        <div class="foot-acts"><button class="btn pri" data-salvar>Salvar</button></div>
+      </div>
+    </section>
+
+    <section class="page" id="p-logs"><div class="logs" id="logs"></div></section>
+  </div>
+</div>
+
+<div class="modal-bg" id="kbModal">
+  <div class="modal">
+    <div class="card-h"><div style="flex:1"><h3 id="kbmTitle">Nova informação</h3><p>A IA vai usar isso para responder os clientes.</p></div>
+      <button class="icon-btn" onclick="fecharKb()"><svg class="i" data-i="x"></svg></button></div>
+    <div class="card-b form">
+      <div class="f full"><label>Título</label><input class="inp" id="kbTitulo" placeholder="Ex.: Prazo de entrega"></div>
+      <div class="f full"><label>Categoria</label><select class="inp" id="kbCat"></select></div>
+      <div class="f full"><label>Informação</label><textarea class="inp" id="kbCont" style="min-height:190px" placeholder="Ex.: O prazo de entrega é de 7 a 15 dias úteis após a aprovação do pagamento, para todo o Brasil."></textarea>
+        <small>Escreva como você explicaria para um funcionário novo.</small></div>
+    </div>
+    <div class="foot">
+      <label style="display:flex;gap:9px;align-items:center;margin-right:auto;cursor:pointer;color:var(--text-2)"><span class="switch"><input type="checkbox" id="kbAtivo" checked><span></span></span>Ativo</label>
+      <button class="btn danger" id="kbExcluir"><svg class="i" data-i="trash"></svg>Excluir</button>
+      <button class="btn pri" id="kbSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ICONS = {
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  star: '<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/>',
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  bot: '<rect x="3" y="8" width="18" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 14h.01M15 14h.01"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M17 5h4"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  term: '<path d="m4 17 6-6-6-6"/><path d="M12 19h8"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  play: '<path d="M6 3l14 9-14 9z"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/>',
+  send: '<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  flask: '<path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9z"/>',
+  plug: '<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
+};
+function icon(n) { return `<svg class="i" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`; }
+document.querySelectorAll('svg[data-i]').forEach(s => { s.setAttribute('viewBox', '0 0 24 24'); s.innerHTML = ICONS[s.dataset.i] || ''; });
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+let EST = null, BASE = { itens: [], categorias: [] };
+let rota = 'visao', filtroInbox = 'todos', busca = '', selId = null, detSig = '', listSig = '', kbCat = 'Todas', editKb = null;
+
+const ROTAS = {
+  visao: ['Visão geral', 'Resumo do atendimento de hoje'],
+  entrada: ['Caixa de entrada', 'Emails recebidos e o que a IA respondeu'],
+  humano: ['Precisam de você', 'Casos que a IA sinalizou para você olhar'],
+  base: ['Informações da loja', 'Tudo o que a IA sabe para responder os clientes'],
+  testar: ['Testar a IA', 'Simule um cliente. Nada é enviado.'],
+  email: ['Caixa de e-mail', 'Conexão com a Hostinger'],
+  ia: ['Inteligência artificial', 'Chave e modelo do Gemini'],
+  comportamento: ['Comportamento', 'Modo de envio, nome da loja e limites'],
+  logs: ['Logs', 'Tudo o que o robô fez, em tempo real'],
+};
+const ROTULO = { respondido: 'Respondido pela IA', enviado_manual: 'Enviado por você', simulado: 'Teste · não enviado', ignorado: 'Ignorado', limite: 'Limite atingido' };
+
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2600); }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+  const j = await r.json(); if (!r.ok || j.erro) throw new Error(j.erro || 'Erro'); return j;
+}
+function hora(ts) { return ts ? new Date(ts * 1000).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : ''; }
+function quando(ts) {
+  if (!ts) return '—'; const d = new Date(ts * 1000), h = new Date();
+  if (d.toDateString() === h.toDateString()) return hora(ts);
+  const ontem = new Date(h); ontem.setDate(h.getDate() - 1);
+  if (d.toDateString() === ontem.toDateString()) return 'ontem';
+  return d.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+}
+function dataCompleta(ts) { return ts ? new Date(ts * 1000).toLocaleString('pt-BR', {day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'}) : ''; }
+function relativo(ts) { if (!ts) return 'ainda não verificou'; const s = Math.max(0, Math.round(Date.now() / 1000 - ts)); return s < 60 ? `verificado há ${s}s` : `verificado há ${Math.round(s / 60)} min`; }
+const CORES_AV = ['#7c6cff', '#34d399', '#60a5fa', '#f472b6', '#fbbf24', '#22d3ee', '#fb923c'];
+function avatar(nome, email) { let h = 0; for (const ch of (email || nome || '')) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const c = CORES_AV[h % CORES_AV.length];
+  return `<div class="av" style="background:${c}22;color:${c}">${esc((nome || '?')[0]).toUpperCase()}</div>`; }
+function nomeDe(i) { return i.nome || (i.remetente || '').split('@')[0] || 'Sem nome'; }
+function linkIG(t) { const ig = EST?.instagram || 'northpowerbr'; return esc(t).replace(new RegExp('@' + ig + '\\b', 'gi'), `<a href="https://instagram.com/${ig}" target="_blank">@${ig}</a>`); }
+function badges(i) { return `<span class="badge b-${i.status}">${ROTULO[i.status] || i.status}</span>` + (i.precisa_humano && i.status !== 'ignorado' ? '<span class="badge b-humano">★ Precisa de você</span>' : ''); }
+
+/* ---------------- Rotas ---------------- */
+function irPara() {
+  const r = (location.hash.replace('#/', '') || 'visao').split('/');
+  rota = ROTAS[r[0]] ? r[0] : 'visao';
+  selId = r[1] || (['entrada', 'humano'].includes(rota) ? selId : null);
+  const pagina = rota === 'humano' ? 'entrada' : rota;
+  if (rota === 'humano') setFiltro('humano'); else if (rota === 'entrada' && filtroInbox === 'humano') setFiltro('todos');
+  $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + pagina));
+  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.r === rota));
+  $('#pgTitle').textContent = ROTAS[rota][0]; $('#pgSub').textContent = ROTAS[rota][1];
+  document.body.classList.remove('menu');
+  if (['email', 'ia', 'comportamento'].includes(rota)) carregarConfig();
+  if (rota === 'base') carregarBase();
+  if (rota === 'logs') setTimeout(() => { const l = $('#logs'); l.scrollTop = l.scrollHeight; });
+  $('#inbox').classList.toggle('show-det', !!r[1]);
+  listSig = ''; detSig = ''; render();
+}
+window.addEventListener('hashchange', irPara);
+
+/* ---------------- Render geral ---------------- */
+function render() {
+  const e = EST; if (!e) return;
+  const cls = e.faltando.length ? 'warn' : e.erro ? 'err' : e.rodando ? 'on' : '';
+  $('#dot').className = 'dot ' + cls;
+  const titulo = e.faltando.length ? 'Falta configurar' : !e.rodando ? 'Pausado' : e.erro ? 'Erro ao verificar' : (e.automatico ? 'Automático ligado' : 'Rodando em teste');
+  $('#runTitle').textContent = titulo;
+  $('#runSub').textContent = e.faltando.length ? 'Abra Caixa de e-mail e IA' : !e.rodando ? 'Clique em ▶ para ligar' : relativo(e.ultima);
+  $('#btnPausa').innerHTML = icon(e.rodando ? 'pause' : 'play');
+  $('#versao').textContent = 'Versão ' + (e.versao || 'local');
+
+  const hum = e.historico.filter(i => i.precisa_humano && i.status !== 'ignorado').length;
+  $('#cEntrada').textContent = e.historico.filter(i => i.status !== 'ignorado').length;
+  const ch = $('#cHumano'); ch.textContent = hum; ch.classList.toggle('hot', hum > 0);
+
+  let b = '';
+  if (e.faltando.length) {
+    const nomes = e.faltando.map(k => ({EMAIL_SENHA: 'a senha do email', GEMINI_API_KEY: 'a chave do Gemini', EMAIL_USUARIO: 'o email'}[k]));
+    const alvo = e.faltando.includes('EMAIL_SENHA') ? 'email' : 'ia';
+    b += `<div class="banner warn">${icon('alert')}<div class="grow"><b>Falta configurar</b> ${nomes.join(' e ')} para o robô começar.</div><a class="btn pri" href="#/${alvo}">Configurar agora</a></div>`;
+  }
+  if (e.erro) b += `<div class="banner bad">${icon('alert')}<div class="grow"><b>Erro ao acessar o email:</b> ${esc(e.erro)}</div><a class="btn" href="#/email">Ver configuração</a></div>`;
+  if (!e.faltando.length && !e.automatico && rota === 'visao') b += `<div class="banner info">${icon('flask')}<div class="grow"><b>Modo teste:</b> a IA escreve as respostas mas não envia. Revise na Caixa de entrada e ligue o automático quando estiver bom.</div><a class="btn" href="#/comportamento">Ligar automático</a></div>`;
+  if ($('#banners').innerHTML !== b) $('#banners').innerHTML = b;
+
+  if (rota === 'visao') renderVisao();
+  if (rota === 'entrada' || rota === 'humano') renderInbox();
+  if (rota === 'logs') renderLogs();
+  if (rota === 'comportamento') { $('#mTeste').classList.toggle('on', !e.automatico); $('#mAuto').classList.toggle('on', e.automatico); }
+}
+
+function renderVisao() {
+  const e = EST, s = e.stats;
+  $('#sResp').textContent = s.respondidos; $('#sHum').textContent = s.humano; $('#sSim').textContent = s.simulados; $('#sIgn').textContent = s.ignorados;
+  $('#sRespS').textContent = `${e.total_respondidos} no total`;
+  $('#kv').innerHTML = [
+    ['Status', `<span style="display:inline-flex;gap:7px;align-items:center"><span class="${$('#dot').className}"></span>${esc($('#runTitle').textContent)}</span>`],
+    ['Modo', e.automatico ? '<span class="badge b-respondido">Automático</span>' : '<span class="badge b-simulado">Teste</span>'],
+    ['Caixa', esc(e.email)],
+    ['Instagram', '@' + esc(e.instagram)],
+    ['Última verificação', e.ultima ? hora(e.ultima) : '—'],
+    ['Verifica a cada', e.intervalo + ' segundos'],
+    ['Base de conhecimento', `<a href="#/base" style="color:var(--accent-2);text-decoration:none">${BASE.itens.filter(i => i.ativo).length} informações ativas</a>`],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  desenharGrafico(e.semana);
+  const ult = e.historico.filter(i => i.status !== 'ignorado').slice(0, 6);
+  $('#ultimos').innerHTML = ult.length ? ult.map(i => `<div class="row" onclick="location.hash='#/entrada/${i.id}'">${avatar(nomeDe(i), i.remetente)}
+      <div class="mid"><div class="who">${esc(nomeDe(i))}</div><div class="sub">${esc(i.assunto || '(sem assunto)')}</div></div>
+      <div class="rb"><span class="t">${quando(i.ts)}</span><div>${badges(i)}</div></div></div>`).join('')
+    : `<div class="empty" style="padding:36px">${icon('inbox')}<b>Nenhum email ainda</b>Mande um email de outra conta para ${esc(e.email)} e clique em Verificar agora.</div>`;
+}
+
+let ultimoGrafico = '';
+function desenharGrafico(dados) {
+  const box = $('#chart'); const W = box.clientWidth || 600, H = box.clientHeight || 210;
+  const sig = W + JSON.stringify(dados); if (sig === ultimoGrafico) return; ultimoGrafico = sig;
+  const pl = 28, pr = 6, pt = 12, pb = 26, iw = W - pl - pr, ih = H - pt - pb;
+  const max = Math.max(4, ...dados.map(d => d.n)); const passo = Math.ceil(max / 4); const topo = passo * 4;
+  let g = '';
+  for (let k = 0; k <= 4; k++) { const y = pt + ih - (ih * k / 4); g += `<line class="gl" x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}"/><text class="ax" x="${pl - 8}" y="${y + 4}" text-anchor="end">${passo * k}</text>`; }
+  const slot = iw / dados.length, bw = Math.min(40, slot * 0.55);
+  const alt = d => d.n ? Math.max(3, ih * d.n / topo) : 0;
+  dados.forEach((d, idx) => {
+    const cx = pl + slot * idx + slot / 2, h = alt(d), x = cx - bw / 2, y = pt + ih - h, r = Math.min(4, h);
+    if (h) g += `<path class="bar" data-b="${idx}" d="M${x},${pt + ih} V${y + r} Q${x},${y} ${x + r},${y} H${x + bw - r} Q${x + bw},${y} ${x + bw},${y + r} V${pt + ih} Z"/>`;
+    g += `<text class="ax" x="${cx}" y="${H - 6}" text-anchor="middle">${idx === dados.length - 1 ? 'hoje' : d.dia}</text>`;
+    g += `<rect class="hit" data-i="${idx}" x="${pl + slot * idx}" y="${pt}" width="${slot}" height="${ih}"/>`;
+  });
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Respostas enviadas por dia nos últimos 7 dias">${g}</svg><div class="tip"></div>`;
+  const tip = box.querySelector('.tip');
+  box.querySelectorAll('.hit').forEach(rc => {
+    rc.addEventListener('mouseenter', () => { const i = +rc.dataset.i, d = dados[i], cx = pl + slot * i + slot / 2;
+      box.querySelectorAll('.bar').forEach(bb => bb.classList.toggle('hov', bb.dataset.b == i));
+      tip.innerHTML = `${d.data}<br><b>${d.n}</b> resposta${d.n === 1 ? '' : 's'}`; tip.style.left = (cx / W * 100) + '%'; tip.style.top = (pt + ih - alt(d) - 8) + 'px'; tip.style.opacity = 1; });
+    rc.addEventListener('mouseleave', () => { tip.style.opacity = 0; box.querySelectorAll('.bar').forEach(bb => bb.classList.remove('hov')); });
+  });
+}
+window.addEventListener('resize', () => { if (EST && rota === 'visao') desenharGrafico(EST.semana); });
+
+/* ---------------- Caixa de entrada ---------------- */
+function setFiltro(f) { filtroInbox = f; $$('#segInbox button').forEach(b => b.classList.toggle('on', b.dataset.f === f)); listSig = ''; }
+$$('#segInbox button').forEach(b => b.onclick = () => {
+  const f = b.dataset.f;
+  if (f === 'humano' && rota !== 'humano') { location.hash = '#/humano'; return; }
+  if (f !== 'humano' && rota === 'humano') { filtroInbox = f; location.hash = '#/entrada'; setTimeout(() => { setFiltro(f); renderInbox(); }); return; }
+  setFiltro(f); renderInbox();
+});
+$('#busca').addEventListener('input', e => { busca = e.target.value.toLowerCase(); listSig = ''; renderInbox(); });
+
+function filtrados() {
+  return EST.historico.filter(i => {
+    const ok = filtroInbox === 'todos' ? i.status !== 'ignorado'
+      : filtroInbox === 'humano' ? i.precisa_humano && i.status !== 'ignorado'
+      : filtroInbox === 'respondido' ? ['respondido', 'enviado_manual'].includes(i.status)
+      : filtroInbox === 'ignorado' ? ['ignorado', 'limite'].includes(i.status) : i.status === filtroInbox;
+    if (!ok) return false;
+    return !busca || [i.nome, i.remetente, i.assunto, i.mensagem].join(' ').toLowerCase().includes(busca);
+  });
+}
+
+function renderInbox() {
+  const itens = filtrados();
+  const sig = filtroInbox + busca + selId + itens.map(i => i.id + i.status).join(',');
+  if (sig !== listSig) {
+    listSig = sig;
+    $('#items').innerHTML = itens.length ? itens.map(i => `<div class="item ${i.id === selId ? 'sel' : ''}" onclick="abrir('${i.id}')">
+      ${avatar(nomeDe(i), i.remetente)}<div class="mid">
+        <div class="l1"><b>${esc(nomeDe(i))}</b><span>${quando(i.ts)}</span></div>
+        <div class="l2">${esc(i.assunto || '(sem assunto)')}</div>
+        <div class="l3">${esc((i.mensagem || i.motivo || '').replace(/\s+/g, ' '))}</div>
+        <div class="bs">${badges(i)}</div></div></div>`).join('')
+      : `<div class="empty">${icon('inbox')}<b>${EST.historico.length ? 'Nada por aqui' : 'Nenhum email ainda'}</b>${EST.historico.length ? 'Nenhum email neste filtro.' : 'Quando chegar um email na caixa ele aparece aqui.'}</div>`;
+  }
+  renderDetalhe();
+}
+
+function abrir(id) { location.hash = `#/${rota === 'humano' ? 'humano' : 'entrada'}/${id}`; }
+
+function renderDetalhe() {
+  const i = EST.historico.find(x => x.id === selId);
+  const sig = i ? i.id + i.status + (i.resposta || '').length : 'none';
+  if (sig === detSig) return;
+  detSig = sig;
+  const det = $('#detail');
+  if (!i) { det.innerHTML = `<div class="empty">${icon('mail')}<b>Selecione um email</b>Clique em um email da lista para ver a mensagem do cliente e a resposta da IA.</div>`; return; }
+  const edit = ['simulado', 'limite'].includes(i.status) && i.resposta;
+  const quemResp = i.status === 'enviado_manual' ? 'Você (resposta da IA revisada)' : 'Atendente IA';
+  const quandoResp = i.ts_envio ? `enviada ${dataCompleta(i.ts_envio)}` : i.status === 'simulado' ? 'rascunho · não enviada' : '';
+  let resp = '';
+  if (!i.resposta) resp = `<div class="note">${icon('shield')}<div><b style="color:var(--text-2)">Não respondido.</b> ${esc(i.motivo || '')}</div></div>`;
+  else if (edit) resp = `<div class="msg ai"><div class="who"><span>${quandoResp}</span><b>Resposta da IA · você pode editar</b></div>
+      <textarea class="bubble" id="respEdit">${esc(i.resposta)}</textarea>
+      <div class="acts"><button class="btn danger" onclick="descartar('${i.id}')">${icon('trash')}Descartar</button>
+      <button class="btn pri" id="btnEnviar" onclick="enviar('${i.id}')">${icon('send')}Enviar para o cliente</button></div></div>`;
+  else resp = `<div class="msg ai"><div class="who"><span>${quandoResp}</span><b>${quemResp}</b></div><div class="bubble">${linkIG(i.resposta)}</div></div>`;
+  det.innerHTML = `
+    <div class="det-h"><button class="icon-btn back" onclick="voltar()">${icon('back')}</button>${avatar(nomeDe(i), i.remetente)}
+      <div style="flex:1;min-width:0"><h2>${esc(i.assunto || '(sem assunto)')}</h2>
+        <div class="meta">${esc(nomeDe(i))} &lt;${esc(i.remetente)}&gt; · ${dataCompleta(i.ts)}</div>
+        <div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">${badges(i)}</div></div></div>
+    <div class="thread">
+      <div class="msg"><div class="who"><b>${esc(nomeDe(i))}</b><span>${hora(i.ts)}</span></div><div class="bubble">${esc(i.mensagem || '(email automático, conteúdo não lido)')}</div></div>
+      ${resp}
+      ${i.motivo && i.resposta ? `<div class="note">${icon('alert')}<div>${esc(i.motivo)}</div></div>` : ''}
+      ${i.precisa_humano && i.status === 'respondido' ? `<div class="note">${icon('star')}<div>A IA respondeu, mas marcou este caso para você acompanhar. Ele também está com estrela no webmail.</div></div>` : ''}
+    </div>`;
+}
+function voltar() { selId = null; location.hash = '#/' + (rota === 'humano' ? 'humano' : 'entrada'); }
+
+async function enviar(id) {
+  if (!confirm('Enviar esta resposta para o cliente agora?')) return;
+  const btn = $('#btnEnviar'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Enviando…';
+  try { await api('/api/enviar', {id, resposta: $('#respEdit').value}); toast('Resposta enviada ao cliente'); detSig = ''; await atualizar(); }
+  catch (e) { toast('Erro: ' + e.message); btn.disabled = false; btn.innerHTML = icon('send') + 'Enviar para o cliente'; }
+}
+async function descartar(id) { await api('/api/descartar', {id}); detSig = ''; toast('Descartado'); atualizar(); }
+
+/* ---------------- Base de conhecimento ---------------- */
+async function carregarBase() { BASE = await api('/api/base'); $('#cBase').textContent = BASE.itens.filter(i => i.ativo).length; if (rota === 'base') renderBase(); }
+function renderBase() {
+  const cats = ['Todas', ...BASE.categorias.filter(c => BASE.itens.some(i => i.categoria === c))];
+  if (!cats.includes(kbCat)) kbCat = 'Todas';
+  $('#kbChips').innerHTML = cats.map(c => `<button class="chip ${c === kbCat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)} · ${c === 'Todas' ? BASE.itens.length : BASE.itens.filter(i => i.categoria === c).length}</button>`).join('');
+  $$('#kbChips .chip').forEach(b => b.onclick = () => { kbCat = b.dataset.c; renderBase(); });
+  const lista = BASE.itens.filter(i => kbCat === 'Todas' || i.categoria === kbCat).sort((a, b) => BASE.categorias.indexOf(a.categoria) - BASE.categorias.indexOf(b.categoria));
+  $('#kb').innerHTML = `<button class="add-card" onclick="abrirKb()"><div>${icon('plus')}Adicionar informação</div></button>` + lista.map(i => `
+    <div class="kc ${i.ativo ? '' : 'off'}">
+      <div class="kt"><span class="badge b-cat">${esc(i.categoria)}</span>${i.ativo ? '' : '<span class="badge b-ignorado">Desativado</span>'}</div>
+      <h4>${esc(i.titulo)}</h4>
+      <div class="kx">${esc(i.conteudo)}</div>
+      <div class="kf"><small>Atualizado ${quando(i.atualizado)}</small>
+        <label class="switch" title="${i.ativo ? 'Ativo: a IA usa' : 'Desativado'}"><input type="checkbox" ${i.ativo ? 'checked' : ''} onchange="alternarKb('${i.id}', this.checked)"><span></span></label>
+        <button class="icon-btn" style="margin-left:4px" title="Editar" onclick="abrirKb('${i.id}')">${icon('edit')}</button></div>
+    </div>`).join('');
+}
+function abrirKb(id) {
+  editKb = id ? BASE.itens.find(i => i.id === id) : null;
+  $('#kbmTitle').textContent = editKb ? 'Editar informação' : 'Nova informação';
+  const padrao = editKb ? editKb.categoria : (kbCat !== 'Todas' ? kbCat : 'Sobre a loja');
+  $('#kbCat').innerHTML = BASE.categorias.map(c => `<option ${c === padrao ? 'selected' : ''}>${esc(c)}</option>`).join('');
+  $('#kbTitulo').value = editKb?.titulo || ''; $('#kbCont').value = editKb?.conteudo || ''; $('#kbAtivo').checked = editKb ? editKb.ativo : true;
+  $('#kbExcluir').style.display = editKb ? '' : 'none';
+  $('#kbModal').classList.add('on'); setTimeout(() => $('#kbTitulo').focus(), 50);
+}
+function fecharKb() { $('#kbModal').classList.remove('on'); }
+$('#kbModal').addEventListener('click', e => { if (e.target.id === 'kbModal') fecharKb(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharKb(); });
+$('#kbSalvar').onclick = async () => {
+  try { await api('/api/base', {id: editKb?.id, titulo: $('#kbTitulo').value, categoria: $('#kbCat').value, conteudo: $('#kbCont').value, ativo: $('#kbAtivo').checked});
+    fecharKb(); toast('Salvo. A IA já está usando essa informação.'); carregarBase(); } catch (e) { toast(e.message); }
+};
+$('#kbExcluir').onclick = async () => { if (!confirm('Excluir esta informação?')) return; await api('/api/base/excluir', {id: editKb.id}); fecharKb(); toast('Excluído'); carregarBase(); };
+async function alternarKb(id, ativo) { const i = BASE.itens.find(x => x.id === id); await api('/api/base', {...i, ativo}); toast(ativo ? 'Ativado' : 'Desativado: a IA não vai usar'); carregarBase(); }
+
+/* ---------------- Testar IA ---------------- */
+const SUGESTOES = ['Oi, comprei ontem e não recebi o código de rastreio', 'Vocês trocam se o tamanho não servir?', 'Qual o prazo de entrega para Recife?', 'Quero cancelar meu pedido', 'Tenho interesse em revender os produtos'];
+$('#sugs').innerHTML = SUGESTOES.map(s => `<button class="chip">${s}</button>`).join('');
+$$('#sugs .chip').forEach(b => b.onclick = () => { $('#tMsg').value = b.textContent; $('#tMsg').focus(); });
+$('#chatLog').innerHTML = `<div class="empty">${icon('bot')}<b>Converse com a sua IA</b>Escreva uma mensagem como se fosse um cliente e veja exatamente o email que ela responderia. Nada é enviado.</div>`;
+async function testar() {
+  const msg = $('#tMsg').value.trim(); if (!msg) return;
+  const assunto = $('#tAssunto').value.trim() || 'Dúvida';
+  const log = $('#chatLog'); if (log.querySelector('.empty')) log.innerHTML = '';
+  log.insertAdjacentHTML('beforeend', `<div class="msg"><div class="who"><b>Cliente (simulado)</b><span>${esc(assunto)}</span></div><div class="bubble">${esc(msg)}</div></div>`);
+  const id = 'r' + Date.now();
+  log.insertAdjacentHTML('beforeend', `<div class="msg ai" id="${id}"><div class="who"><b>Atendente IA</b></div><div class="bubble"><span class="spin"></span></div></div>`);
+  log.scrollTop = log.scrollHeight; $('#tMsg').value = ''; $('#btnTestar').disabled = true;
+  try {
+    const r = await api('/api/testar-ia', {mensagem: msg, assunto});
+    const tag = r.acao === 'ignorar' ? '<span class="badge b-ignorado">Ignoraria (spam)</span>' : r.precisa_humano ? '<span class="badge b-humano">★ Marcaria para você</span>' : '<span class="badge b-respondido">Resolveria sozinha</span>';
+    $('#' + id).innerHTML = `<div class="who">${tag}<b>Atendente IA</b></div><div class="bubble">${linkIG(r.resposta || '(sem resposta)')}</div>`;
+  } catch (e) { $('#' + id).innerHTML = `<div class="who"><b>Atendente IA</b></div><div class="bubble" style="color:var(--bad)">Erro: ${esc(e.message)}</div>`; }
+  $('#btnTestar').disabled = false; log.scrollTop = log.scrollHeight;
+}
+$('#btnTestar').onclick = testar;
+$('#tMsg').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); testar(); } });
+
+/* ---------------- Configurações ---------------- */
+async function carregarConfig() {
+  const c = await api('/api/config');
+  $$('[data-k]').forEach(i => { if (document.activeElement !== i) i.value = c[i.dataset.k] ?? ''; });
+  $$('[data-tem]').forEach(s => { s.textContent = c._tem[s.dataset.tem] ? '✓ Já salva. Deixe em branco para manter.' : 'Ainda não preenchida.'; });
+}
+function coletar(page) { const d = {}; page.querySelectorAll('[data-k]').forEach(i => d[i.dataset.k] = i.value); return d; }
+$$('[data-salvar]').forEach(b => b.onclick = async () => {
+  const page = b.closest('.page');
+  try { await api('/api/config', coletar(page)); toast('Configurações salvas'); page.querySelectorAll('input[type=password]').forEach(i => i.value = ''); carregarConfig(); atualizar(); }
+  catch (e) { toast('Erro: ' + e.message); }
+});
+$$('[data-checar]').forEach(b => b.onclick = async () => {
+  const page = b.closest('.page'), box = page.querySelector('[data-resbox]');
+  box.style.display = 'block'; box.innerHTML = '<div class="card-b" style="display:flex;gap:10px;align-items:center"><span class="spin"></span> Testando email e IA… pode levar alguns segundos</div>';
+  try {
+    await api('/api/config', coletar(page)); page.querySelectorAll('input[type=password]').forEach(i => i.value = '');
+    const r = await api('/api/checar', {});
+    box.innerHTML = '<div class="card-h"><h3>Resultado do teste</h3></div><div class="card-b" style="padding-top:4px;padding-bottom:4px">' + r.resultados.map(x =>
+      `<div class="res"><span class="ic ${x.ok ? 'ok' : 'no'}">${icon(x.ok ? 'check' : 'x')}</span><div><b>${esc(x.item)}</b><small>${esc(x.detalhe)}</small></div></div>`).join('') + '</div>';
+    carregarConfig(); atualizar();
+  } catch (e) { box.innerHTML = `<div class="card-b" style="color:var(--bad)">Erro: ${esc(e.message)}</div>`; }
+});
+$('#mTeste').onclick = async () => { if (!EST.automatico) return; await api('/api/controle', {acao: 'modo', automatico: false}); toast('Modo teste: nada será enviado'); atualizar(); };
+$('#mAuto').onclick = async () => {
+  if (EST.automatico) return;
+  if (!confirm('Ligar o modo automático?\n\nA IA vai responder os clientes sozinha.\n\nEmails que já apareceram no modo teste não são enviados automaticamente. Envie pela Caixa de entrada se quiser.')) return;
+  await api('/api/controle', {acao: 'modo', automatico: true}); toast('Automático ligado'); atualizar();
+};
+
+/* ---------------- Logs / controles ---------------- */
+function renderLogs() { const l = $('#logs'); const fim = l.scrollTop + l.clientHeight >= l.scrollHeight - 30; const t = EST.logs.join('\n') || 'Sem registros ainda.'; if (l.textContent !== t) { l.textContent = t; if (fim) l.scrollTop = l.scrollHeight; } }
+$('#btnVerificar').onclick = async () => { const b = $('#btnVerificar'); b.disabled = true; await api('/api/controle', {acao: 'verificar'}); toast('Verificando a caixa…'); setTimeout(async () => { await atualizar(); b.disabled = false; }, 2500); };
+$('#btnPausa').onclick = async () => { const ligado = EST.rodando; await api('/api/controle', {acao: ligado ? 'pausar' : 'iniciar'}); toast(ligado ? 'Robô pausado' : 'Robô ligado'); atualizar(); };
+
+async function atualizar() {
+  try { EST = await api('/api/estado'); render(); }
+  catch (e) { $('#runTitle').textContent = 'Desconectado'; $('#runSub').textContent = 'O programa está aberto?'; $('#dot').className = 'dot err'; }
+}
+(async () => { try { await carregarBase(); } catch (e) {} irPara(); await atualizar(); setInterval(atualizar, 3000); })();
+</script>
+</body>
+</html>
